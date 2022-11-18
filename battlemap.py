@@ -1,4 +1,3 @@
-import os
 import random
 from interface import Interface
 
@@ -6,9 +5,9 @@ from interface import Interface
 class Gridsquare:
     """Coordinate set on map, may contain an actor"""
 
-    def __init__(self, coords:tuple, item:object) -> None:
+    def __init__(self, coords:tuple, within:object) -> None:
         self.coords = coords
-        self.item = item
+        self.within = within
 
 
 
@@ -25,44 +24,86 @@ class Gridmap:
                 gsquare = Gridsquare((x,y), None)
                 self.mapping[(x,y)] = gsquare
     
+    
     def display(self) -> None:
         for y in range(self.height):
             for x in range(self.width):
                 end = " "
                 if x == self.width - 1:
                     end = "\n"
-                actor = self.mapping[(x,y)].item
+                actor = self.mapping[(x,y)].within
                 if actor is None:
-                    icon = "."
+                    icon = ".."
                 else:
                     icon = actor.icon
                 print(f"{icon}", end=end)
 
 
 
-class Actor:
+class Entity:
+    """Object inhabiting a square on grip"""
+
     def __init__(self, icon:str) -> None:
         self.icon = icon
         self.gmap:Gridmap = None
         self.gsquare:Gridsquare = None
+    
 
     def enterMap(self, gmap:Gridmap, coords:tuple=None) -> None:
         self.gmap = gmap
         if coords is not None:
-            self.gsquare = gmap.mapping[coords]
+            new_gsquare = gmap.mapping[coords]
         else:
             gsquare_full = True
             while gsquare_full:
-                self.gsquare = random.choice(gmap.mapping)
-                if self.gsquare.item is None:
+                new_x = random.randint(0, (self.gmap.width - 1))
+                new_y = random.randint(0, (self.gmap.height - 1))
+                new_gsquare = self.gmap.mapping[(new_x, new_y)]
+                if new_gsquare.within is None:
                     gsquare_full = False
-        self.gsquare.item = self
-        
+        self.gsquare = new_gsquare
+        self.gsquare.within = self
 
+
+
+class Location(Entity):
+    """Explorable area inhabiting a square on grid"""
+    def explore(self, actor):
+        reward = random.randint(1,13)
+        actor.gold_flakes += reward
+
+        Interface.clear()
+        print(f"Found {reward} gold flakes")
+        Interface.pressEnter()
+
+
+class Actor(Entity):
+    """Lifeform moving through grid"""
+    def __init__(self, icon: str) -> None:
+        super().__init__(icon)
+        self.gold_flakes = 0
+        self.max_hp = 15
+        self.hp = self.max_hp
+    
     def moveTo(self, coords:tuple) -> None:
-        self.gsquare.item = None
-        self.gsquare = self.gmap.mapping[coords]
-        self.gsquare.item = self
+        new_gsquare = self.gmap.mapping[coords]
+
+        if isinstance(new_gsquare.within, Actor):
+            hp_cost = random.randint(1,3)
+            self.hp -= hp_cost
+            Interface.clear()
+            print(f"Encountered a lifeform!\nLost {hp_cost} hp.")
+            if self.hp < 1:
+                print(f"You died!")
+                Interface.pressEnter()
+                return
+            Interface.pressEnter()
+
+        if isinstance(new_gsquare.within, Location):
+            new_gsquare.within.explore(self)
+        self.gsquare.within = None
+        self.gsquare = new_gsquare
+        new_gsquare.within = self        
 
 
 
@@ -98,7 +139,7 @@ class Battlemap:
         while isRunning:
             Interface.clear()
             self.gmap.display()
-            user_input = input("\n[W] Up\n[A] Left\n[S] Down\n[D] Right\n[Enter] Wait\n\n").lower()
+            user_input = input(f"\n\nHp: {self.pc.hp}/{self.pc.max_hp}\nGold Flakes: {self.pc.gold_flakes}\n\n[W] Up\n[A] Left\n[S] Down\n[D] Right\n\n[Enter] Wait\n[X] End Simulation\n\n").lower()
             if user_input in ["w", "a", "s", "d"]:
                 direct_dict = {
                     "w": Direction.UP,
@@ -108,4 +149,10 @@ class Battlemap:
                 }
                 direction = direct_dict[user_input]
                 self.moveActor(self.pc, direction)
-                
+                if self.pc.hp < 1:
+                    isRunning = False
+            elif user_input == "x":
+                Interface.clear()
+                print("Ending the simulation...")
+                Interface.pressEnter()
+                isRunning = False
