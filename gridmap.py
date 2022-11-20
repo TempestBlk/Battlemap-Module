@@ -1,9 +1,15 @@
+from abc import abstractmethod
 import random
 from interface import Interface
+from hub import Hub
+from location import Location, PowerStation
 
 
 class Gridsquare:
-    """Coordinate set on map, may contain an actor"""
+    """
+    A Gridsquare is created for every coordinate point in its Gridmap.\n
+    May contain a MapEntity.
+    """
 
     def __init__(self, coords:tuple, within:object) -> None:
         self.coords = coords
@@ -12,7 +18,15 @@ class Gridsquare:
 
 
 class Gridmap:
-    """Map of gridsquares in area"""
+    """
+    Data structure containing a two dimensional grid of Gridsquares.\n
+    Handles displaying map in terminal.
+    """
+    UP = (0,-1)
+    LEFT = (-1,0)
+    DOWN = (0,1)
+    RIGHT = (1,0)
+
     mapping: dict[tuple, Gridsquare]
 
     def __init__(self, width:int, height:int) -> None:
@@ -40,8 +54,11 @@ class Gridmap:
 
 
 
-class Entity:
-    """Object inhabiting a square on grip"""
+class MapEntity:
+    """
+    Object which inhabits a square on the map.
+    May be a Location or Actor.
+    """
 
     def __init__(self, icon:str) -> None:
         self.icon = icon
@@ -49,7 +66,7 @@ class Entity:
         self.gsquare:Gridsquare = None
     
 
-    def enterMap(self, gmap:Gridmap, coords:tuple=None) -> None:
+    def toMap(self, gmap:Gridmap, coords:tuple=None) -> None:
         self.gmap = gmap
         if coords is not None:
             new_gsquare = gmap.mapping[coords]
@@ -64,21 +81,41 @@ class Entity:
         self.gsquare = new_gsquare
         self.gsquare.within = self
 
+    
+
+class Obstacle(MapEntity):
+    """
+    An obstacle on the areamap.
+    Cannot move through or interact with.
+    """
 
 
-class Location(Entity):
-    """Explorable area inhabiting a square on grid"""
-    def explore(self, actor):
-        reward = random.randint(1,13)
-        actor.gold_flakes += reward
 
-        Interface.clear()
-        print(f"Found {reward} gold flakes")
-        Interface.pressEnter()
+class MapLocation(MapEntity):
+    """
+    A Location to explore, visible on the Areamap.
+    """
+
+    def __init__(self, icon:str, location:Location=None) -> None:
+        super().__init__(icon)
+        self.location = location
+        self.visited = False
 
 
-class Actor(Entity):
-    """Lifeform moving through grid"""
+    def enter(self, actor:object):
+        if self.visited is False:
+            self.visited = True
+            self.icon = "PS"
+        self.location.explore()
+        
+
+
+
+class Actor(MapEntity):
+    """
+    Lifeform moving through a map.
+    """
+
     def __init__(self, icon: str) -> None:
         super().__init__(icon)
         self.gold_flakes = 0
@@ -88,7 +125,10 @@ class Actor(Entity):
     def moveTo(self, coords:tuple) -> None:
         new_gsquare = self.gmap.mapping[coords]
 
-        if isinstance(new_gsquare.within, Actor):
+        if isinstance(new_gsquare.within, Obstacle):
+            return
+        
+        elif isinstance(new_gsquare.within, Actor):
             hp_cost = random.randint(1,3)
             self.hp -= hp_cost
             Interface.clear()
@@ -99,23 +139,48 @@ class Actor(Entity):
                 return
             Interface.pressEnter()
 
-        if isinstance(new_gsquare.within, Location):
-            new_gsquare.within.explore(self)
+        elif isinstance(new_gsquare.within, MapHub):
+            new_gsquare.within.hub.main(self)
+            return
+
+        elif isinstance(new_gsquare.within, Cache):
+            new_gsquare.within.enter(self)
+
+        elif isinstance(new_gsquare.within, MapLocation):
+            new_gsquare.within.enter(self)
+            return
+
         self.gsquare.within = None
         self.gsquare = new_gsquare
-        new_gsquare.within = self        
+        new_gsquare.within = self
 
 
 
-class Direction:
-    UP = (0,-1)
-    LEFT = (-1,0)
-    DOWN = (0,1)
-    RIGHT = (1,0)
+class MapHub(MapLocation):
+    """
+    Entrance to Hub Location from Areamap
+    """
+    def __init__(self, icon: str, hub:Hub) -> None:
+        super().__init__(icon)
+        self.hub = hub
 
 
 
-class Battlemap:
+class Cache(MapLocation):
+    def enter(self, actor):
+        reward = random.randint(1,13)
+        actor.gold_flakes += reward
+
+        Interface.clear()
+        print(f"Found {reward} gold flakes")
+        Interface.pressEnter()
+
+
+
+class Areamap:
+    """
+    todo desc
+    """
 
     def __init__(self, gmap:Gridmap, pc:Actor) -> None:
         self.gmap = gmap
@@ -132,20 +197,20 @@ class Battlemap:
 
     def start(self) -> None:
         Interface.clear()
-        print("Entering battle!\n\nActors:\n[P] Player")
-        Interface.pressEnter()
+        # print("Entering battle!\n\nActors:\n[P] Player")
+        # Interface.pressEnter()
 
         isRunning = True
         while isRunning:
             Interface.clear()
             self.gmap.display()
-            user_input = input(f"\n\nHp: {self.pc.hp}/{self.pc.max_hp}\nGold Flakes: {self.pc.gold_flakes}\n\n[W] Up\n[A] Left\n[S] Down\n[D] Right\n\n[Enter] Wait\n[X] End Simulation\n\n").lower()
+            user_input = input(f"\n\nHp: {self.pc.hp}/{self.pc.max_hp}\nGold Flakes: {self.pc.gold_flakes}\n\n[W] Up\n[A] Left\n[S] Down\n[D] Right\n\n[Enter] Wait\n[X] Quit\n\n").lower()
             if user_input in ["w", "a", "s", "d"]:
                 direct_dict = {
-                    "w": Direction.UP,
-                    "a": Direction.LEFT,
-                    "s": Direction.DOWN,
-                    "d": Direction.RIGHT
+                    "w": self.gmap.UP,
+                    "a": self.gmap.LEFT,
+                    "s": self.gmap.DOWN,
+                    "d": self.gmap.RIGHT
                 }
                 direction = direct_dict[user_input]
                 self.moveActor(self.pc, direction)
@@ -154,5 +219,5 @@ class Battlemap:
             elif user_input == "x":
                 Interface.clear()
                 print("Ending the simulation...")
-                Interface.pressEnter()
+                # Interface.pressEnter()
                 isRunning = False

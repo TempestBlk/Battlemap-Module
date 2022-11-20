@@ -1,18 +1,37 @@
-from battlemap import Actor, Location, Gridmap, Battlemap
+from gridmap import Actor, Gridmap, Areamap, MapLocation, MapHub, Obstacle, Cache
+from hub import NorthWingSZ
+from location import PowerStation
 
 
-gmap = Gridmap(width=10, height=10)
+gmap = Gridmap(width=15, height=15)
+
+
+hub = MapHub(icon="SZ", hub=NorthWingSZ)
+hub.toMap(gmap, (4,13))
+
 
 pc = Actor(icon="PC")
-pc.enterMap(gmap)
+pc.toMap(gmap, (3,13))
 
-for _ in range(10):
-    l = Location(icon="L1")
-    l.enterMap(gmap)
 
-for _ in range(10):
-    a = Actor(icon="A1")
-    a.enterMap(gmap)
+ps = MapLocation(icon="??", location=PowerStation)
+ps.toMap(gmap, (6,7))
 
-battlemap = Battlemap(gmap, pc)
+
+# for _ in range(10):
+#     o = Obstacle(icon="##")
+#     o.toMap(gmap)
+
+
+# for _ in range(5):
+#     c = Cache(icon="C ")
+#     c.toMap(gmap)
+
+
+# for _ in range(4):
+#     a = Actor(icon="A ")
+#     a.toMap(gmap)
+
+
+battlemap = Areamap(gmap, pc)
 battlemap.start()
