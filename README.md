@@ -1,9 +1,9 @@
 # Battlemap-Module
 
-## Goals-
-    TBD
+## Goals
+    Implement grid-based maps for Game-Project-A.
 
-## Update Log-
+## Update Log
 
 >v0.2.0
 - integrated Turn-Based-Combat module
