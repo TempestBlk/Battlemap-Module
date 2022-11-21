@@ -5,6 +5,9 @@
 
 ## Update Log-
 
+>v0.2.0
+- integrated Turn-Based-Combat module
+
 >v0.1.2
 - added hub location to map
   - hubs contain npcs to interact with

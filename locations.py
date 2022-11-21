@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 class Location(metaclass=ABCMeta):
     
     @abstractmethod
-    def explore():
+    def explore() -> abs:
         pass
 
 

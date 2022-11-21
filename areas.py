@@ -1,8 +1,11 @@
 from abc import abstractmethod
 import random
 from interface import Interface
-from hub import Hub
-from location import Location, PowerStation
+from hubs import Hub
+from locations import Location
+from lifeforms import Lifeform, PlayerCharacter, Mindless
+from items import Weapon
+from encounters import Encounter
 
 
 class Gridsquare:
@@ -22,6 +25,7 @@ class Gridmap:
     Data structure containing a two dimensional grid of Gridsquares.\n
     Handles displaying map in terminal.
     """
+    
     UP = (0,-1)
     LEFT = (-1,0)
     DOWN = (0,1)
@@ -57,7 +61,7 @@ class Gridmap:
 class MapEntity:
     """
     Object which inhabits a square on the map.
-    May be a Location or Actor.
+    May be a Location or MapActor.
     """
 
     def __init__(self, icon:str) -> None:
@@ -110,49 +114,75 @@ class MapLocation(MapEntity):
         
 
 
-
-class Actor(MapEntity):
+class MapActor(MapEntity):
     """
     Lifeform moving through a map.
     """
 
-    def __init__(self, icon: str) -> None:
+    def __init__(self, icon:str) -> None:
         super().__init__(icon)
+
+
+
+class PlayerGroup(MapActor):
+    def __init__(self, pc:PlayerCharacter, allies:list[Lifeform]=None, icon:str="PC") -> None:
+        super().__init__(icon)
+        self.pc = pc
+        self.allies = allies
         self.gold_flakes = 0
         self.max_hp = 15
         self.hp = self.max_hp
-    
+
+
     def moveTo(self, coords:tuple) -> None:
         new_gsquare = self.gmap.mapping[coords]
 
         if isinstance(new_gsquare.within, Obstacle):
             return
-        
-        elif isinstance(new_gsquare.within, Actor):
-            hp_cost = random.randint(1,3)
-            self.hp -= hp_cost
-            Interface.clear()
-            print(f"Encountered a lifeform!\nLost {hp_cost} hp.")
-            if self.hp < 1:
-                print(f"You died!")
-                Interface.pressEnter()
-                return
-            Interface.pressEnter()
+
+        elif isinstance(new_gsquare.within, EnemyGroup):
+            new_gsquare.within.encounter(self.pc)
 
         elif isinstance(new_gsquare.within, MapHub):
-            new_gsquare.within.hub.main(self)
+            new_gsquare.within.hub.main(self.pc)
             return
 
         elif isinstance(new_gsquare.within, Cache):
-            new_gsquare.within.enter(self)
+            new_gsquare.within.enter(self.pc)
 
         elif isinstance(new_gsquare.within, MapLocation):
-            new_gsquare.within.enter(self)
+            new_gsquare.within.enter(self.pc)
             return
 
         self.gsquare.within = None
         self.gsquare = new_gsquare
         new_gsquare.within = self
+
+
+
+class EnemyGroup(MapActor):
+    """
+    """
+
+    LONE_MINDLESS = [[Mindless, "Mindless-1"]]
+    LIGHT_MINDLESS = [[Mindless, "Mindless-1"], [Mindless, "Mindless-2"]]
+
+
+    def __init__(self, group:list[list], icon:str="HG") -> None:
+        super().__init__(icon)
+
+        self.enemies = []
+        for enemy in group:
+            enemy_class = enemy[0]
+            lifeform:Lifeform = enemy_class(enemy[1])
+            if len(enemy) > 2:
+                lifeform.equipWeapon(Weapon(enemy[2]))
+            self.enemies.append(lifeform)
+
+
+    def encounter(self, pc, allies=None):
+        new_encounter = Encounter(pc, self.enemies, allies)
+        return new_encounter
 
 
 
@@ -167,7 +197,7 @@ class MapHub(MapLocation):
 
 
 class Cache(MapLocation):
-    def enter(self, actor):
+    def enter(self, actor:PlayerCharacter):
         reward = random.randint(1,13)
         actor.gold_flakes += reward
 
@@ -182,12 +212,13 @@ class Areamap:
     todo desc
     """
 
-    def __init__(self, gmap:Gridmap, pc:Actor) -> None:
+    def __init__(self, gmap:Gridmap, pg:PlayerGroup) -> None:
         self.gmap = gmap
-        self.pc = pc
+        self.pg = pg
+        self.pc = pg.pc
 
     
-    def moveActor(self, actor:Actor, direction:tuple):
+    def moveMapActor(self, actor:MapActor, direction:tuple):
         cur_coords = actor.gsquare.coords
         new_coords = ((cur_coords[0] + direction[0]), (cur_coords[1] + direction[1]))
         if new_coords[0] < 0 or new_coords[0] > self.gmap.width - 1 or new_coords[1] < 0 or new_coords[1] > self.gmap.height - 1:
@@ -195,10 +226,9 @@ class Areamap:
         actor.moveTo(new_coords)
 
 
-    def start(self) -> None:
-        Interface.clear()
-        # print("Entering battle!\n\nActors:\n[P] Player")
-        # Interface.pressEnter()
+    def start(self, start_hub:MapHub=None) -> None:
+        if start_hub is not None:
+            start_hub.hub.main(self.pc)
 
         isRunning = True
         while isRunning:
@@ -213,8 +243,8 @@ class Areamap:
                     "d": self.gmap.RIGHT
                 }
                 direction = direct_dict[user_input]
-                self.moveActor(self.pc, direction)
-                if self.pc.hp < 1:
+                self.moveMapActor(self.pg, direction)
+                if self.pg.hp < 1:
                     isRunning = False
             elif user_input == "x":
                 Interface.clear()
