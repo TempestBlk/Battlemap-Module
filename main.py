@@ -44,10 +44,5 @@ for _ in range(2):
 #     c.toMap(gmap)
 
 
-# for _ in range(4):
-#     a = Actor(icon="A ")
-#     a.toMap(gmap)
-
-
 areamap = Areamap(gmap, pc)
 areamap.start(start_hub=hub)
