@@ -23,6 +23,7 @@ class Merchant(Npc):
     buy_mod:float
     for_sale:dict
 
+    @classmethod
     def BuyMenu(self, pc:PlayerCharacter, comment, items, item_type):
         inBuyMenu = True
         while inBuyMenu:
@@ -53,6 +54,7 @@ class Merchant(Npc):
                 inBuyMenu = False
 
     
+    @classmethod
     def SellMenu(self, pc:PlayerCharacter, comment:str):
         Interface.clear()
         print(self.title_card)
@@ -96,7 +98,7 @@ class SeniorResearcherLydia(Doctor):
         elif pc.hp > 0:
             print("Set them down here! We'll start surgery immediately.")
         else:
-            print(f"{pc.name} is dead...\nGet their body in the Anubis Chamber.")
+            print(f"{pc.name} is dead...\nGet them in the .")
         pc.hp = pc.max_hp
 
         Interface.pressEnter()

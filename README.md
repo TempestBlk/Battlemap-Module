@@ -5,6 +5,11 @@
 
 ## Update Log
 
+>v0.2.1
+- added hidden map icons
+- various fixes
+- general improvements
+
 >v0.2.0
 - integrated Turn-Based-Combat module
 

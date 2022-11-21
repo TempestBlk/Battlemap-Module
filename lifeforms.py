@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from attacks import Attack
 from levelup import Levelup
-from items import Item, Weapon, Wearable
+from items import Item, Weapon
 
 
 class Lifeform(metaclass=ABCMeta):

@@ -13,7 +13,7 @@ class Inventory():
             print("\t--- [Inventory] ---\n\n")
             Interface.characterInfo(pc, stats=False)
             if pc.inventory:
-                print("\n[0] Switch to equipped")
+                print("\n[E] Switch to equipped")
                 print(f"\nInventory:")
                 item_num = 0
                 item_dict = {}
@@ -33,7 +33,7 @@ class Inventory():
                     elif userInput == "2":
                         pc.inventory.remove(selected_item)
     
-                elif userInput == "0":
+                elif userInput.lower() == "e":
                     inInventory = Inventory.equipped(pc, inInventory)
                 
                 else:
@@ -78,7 +78,7 @@ class Inventory():
             else:
                 print("None")
             
-            print("\n[0] Switch to inventory")
+            print("\n[E] Switch to inventory")
 
             userInput = input("\n[Enter] Go Back\n\n")
             if userInput in item_dict:
@@ -92,7 +92,7 @@ class Inventory():
                         pass
                     elif equip_type == "wearable":
                         pc.unequipWearable(selected_item)
-            elif userInput == "0":
+            elif userInput.lower() == "e":
                 inEquipped = False
                 return inInventory
             else:
